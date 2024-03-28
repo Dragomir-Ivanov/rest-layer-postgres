@@ -37,6 +37,7 @@ func (s store) Find(ctx context.Context, q *query.Query) (*resource.ItemList, er
 	if err != nil {
 		return nil, errors.Wrapf(err, "predicate: %v", q.Predicate)
 	}
+	sqlStr = strings.ReplaceAll(sqlStr, "$$", "?")
 
 	slog.DebugContext(ctx, "pgsql.Find", "sql", sqlStr, "args", args)
 
@@ -243,13 +244,13 @@ func predicteToExpressions(parent string, s *schema.Schema, q query.Predicate) (
 			var expr exp.Expression
 			if pgtype != "" {
 				if isSchemaArray {
-					expr = goqu.L("? \\?\\| ?", goqu.Cast(postgresJsonbSupport(parent, t.Field, true), pgtype), pq.Array(convertToArray(t.Value)))
+					expr = goqu.L("? $$| ?", goqu.Cast(postgresJsonbSupport(parent, t.Field, true), pgtype), pq.Array(convertToArray(t.Value)))
 				} else {
 					expr = goqu.Cast(postgresJsonbSupport(parent, t.Field, false), pgtype).Eq(t.Value)
 				}
 			} else {
 				if isSchemaArray {
-					expr = goqu.L("? \\?\\| ?", postgresJsonbSupport(parent, t.Field, true), pq.Array(convertToArray(t.Value)))
+					expr = goqu.L("? $$| ?", postgresJsonbSupport(parent, t.Field, true), pq.Array(convertToArray(t.Value)))
 				} else {
 					expr = postgresJsonbSupport(parent, t.Field, false).Eq(t.Value)
 				}
@@ -268,13 +269,13 @@ func predicteToExpressions(parent string, s *schema.Schema, q query.Predicate) (
 			var expr exp.Expression
 			if pgtype != "" {
 				if isSchemaArray {
-					expr = goqu.L("NOT (? \\?\\| ?)", goqu.Cast(postgresJsonbSupport(parent, t.Field, true), pgtype), pq.Array(convertToArray(t.Value)))
+					expr = goqu.L("NOT (? $$| ?)", goqu.Cast(postgresJsonbSupport(parent, t.Field, true), pgtype), pq.Array(convertToArray(t.Value)))
 				} else {
 					expr = goqu.Cast(postgresJsonbSupport(parent, t.Field, false), pgtype).Neq(t.Value)
 				}
 			} else {
 				if isSchemaArray {
-					expr = goqu.L("NOT (? \\?\\| ?)", postgresJsonbSupport(parent, t.Field, true), pq.Array(convertToArray(t.Value)))
+					expr = goqu.L("NOT (? $$| ?)", postgresJsonbSupport(parent, t.Field, true), pq.Array(convertToArray(t.Value)))
 				} else {
 					expr = postgresJsonbSupport(parent, t.Field, false).Neq(t.Value)
 				}

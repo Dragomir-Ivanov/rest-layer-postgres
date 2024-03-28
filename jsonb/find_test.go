@@ -3,10 +3,12 @@ package jsonb
 import (
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
+	"github.com/lib/pq"
 	"github.com/rs/rest-layer/schema"
 	"github.com/rs/rest-layer/schema/query"
 	"github.com/sanity-io/litter"
@@ -371,34 +373,34 @@ func Test_buildWheres(t *testing.T) {
 				int64(30),
 			},
 		},
-		// {
-		// 	name: "TODO: query.Eq: array",
-		// 	query: query.Query{
-		// 		Predicate: query.Predicate{&query.Equal{Field: "array", Value: []string{"John", "Doe"}}},
-		// 	},
-		// 	want: []goqu.Expression{
-		// 		goqu.L("? \\?\\| ?", goqu.L("?->?", goqu.C("payload"), goqu.V("array")), pq.Array([]string{"John", "Doe"})),
-		// 	},
-		// 	wantSQL: `SELECT * FROM "table" WHERE "payload"->? ?| ?`,
-		// 	wantArgs: []interface{}{
-		// 		"array",
-		// 		`{"John","Doe"}`,
-		// 	},
-		// },
-		// {
-		// 	name: "TODO: query.Eq: array single",
-		// 	query: query.Query{
-		// 		Predicate: query.Predicate{&query.Equal{Field: "array-with-typer", Value: 1}},
-		// 	},
-		// 	want: []goqu.Expression{
-		// 		goqu.L("? \\?\\| ?", goqu.L("?->?", goqu.C("payload"), goqu.V("array-with-typer")), pq.Array([]int{1})),
-		// 	},
-		// 	wantSQL: `SELECT * FROM "table" WHERE "payload"->? ?| ?`,
-		// 	wantArgs: []interface{}{
-		// 		"array-with-typer",
-		// 		`{1}`,
-		// 	},
-		// },
+		{
+			name: "TODO: query.Eq: array",
+			query: query.Query{
+				Predicate: query.Predicate{&query.Equal{Field: "array", Value: []string{"John", "Doe"}}},
+			},
+			want: []goqu.Expression{
+				goqu.L("? $$| ?", goqu.L("?->?", goqu.C("payload"), goqu.V("array")), pq.Array([]string{"John", "Doe"})),
+			},
+			wantSQL: `SELECT * FROM "table" WHERE "payload"->? ?| ?`,
+			wantArgs: []interface{}{
+				"array",
+				`{"John","Doe"}`,
+			},
+		},
+		{
+			name: "TODO: query.Eq: array single",
+			query: query.Query{
+				Predicate: query.Predicate{&query.Equal{Field: "array-with-typer", Value: 1}},
+			},
+			want: []goqu.Expression{
+				goqu.L("? $$| ?", goqu.L("?->?", goqu.C("payload"), goqu.V("array-with-typer")), pq.Array([]int{1})),
+			},
+			wantSQL: `SELECT * FROM "table" WHERE "payload"->? ?| ?`,
+			wantArgs: []interface{}{
+				"array-with-typer",
+				`{1}`,
+			},
+		},
 		{
 			name: "query.NotEq",
 			query: query.Query{
@@ -413,34 +415,34 @@ func Test_buildWheres(t *testing.T) {
 				"John",
 			},
 		},
-		// {
-		// 	name: "TODO: query.NotEq: array",
-		// 	query: query.Query{
-		// 		Predicate: query.Predicate{&query.NotEqual{Field: "array", Value: []string{"John", "Doe"}}},
-		// 	},
-		// 	want: []goqu.Expression{
-		// 		goqu.L("NOT (? \\?\\| ?)", goqu.L("?->?", goqu.C("payload"), goqu.V("array")), pq.Array([]string{"John", "Doe"})),
-		// 	},
-		// 	wantSQL: `SELECT * FROM "table" WHERE NOT ("payload"->? ?| ?)`,
-		// 	wantArgs: []interface{}{
-		// 		"array",
-		// 		`{"John","Doe"}`,
-		// 	},
-		// },
-		// {
-		// 	name: "TODO: query.NotEq: array single",
-		// 	query: query.Query{
-		// 		Predicate: query.Predicate{&query.NotEqual{Field: "array-with-typer", Value: 1}},
-		// 	},
-		// 	want: []goqu.Expression{
-		// 		goqu.L("NOT (? \\?\\| ?)", goqu.L("?->?", goqu.C("payload"), goqu.V("array-with-typer")), pq.Array([]int{1})),
-		// 	},
-		// 	wantSQL: `SELECT * FROM "table" WHERE NOT ("payload"->? ?| ?)`,
-		// 	wantArgs: []interface{}{
-		// 		"array-with-typer",
-		// 		`{1}`,
-		// 	},
-		// },
+		{
+			name: "TODO: query.NotEq: array",
+			query: query.Query{
+				Predicate: query.Predicate{&query.NotEqual{Field: "array", Value: []string{"John", "Doe"}}},
+			},
+			want: []goqu.Expression{
+				goqu.L("NOT (? $$| ?)", goqu.L("?->?", goqu.C("payload"), goqu.V("array")), pq.Array([]string{"John", "Doe"})),
+			},
+			wantSQL: `SELECT * FROM "table" WHERE NOT ("payload"->? ?| ?)`,
+			wantArgs: []interface{}{
+				"array",
+				`{"John","Doe"}`,
+			},
+		},
+		{
+			name: "TODO: query.NotEq: array single",
+			query: query.Query{
+				Predicate: query.Predicate{&query.NotEqual{Field: "array-with-typer", Value: 1}},
+			},
+			want: []goqu.Expression{
+				goqu.L("NOT (? $$| ?)", goqu.L("?->?", goqu.C("payload"), goqu.V("array-with-typer")), pq.Array([]int{1})),
+			},
+			wantSQL: `SELECT * FROM "table" WHERE NOT ("payload"->? ?| ?)`,
+			wantArgs: []interface{}{
+				"array-with-typer",
+				`{1}`,
+			},
+		},
 		{
 			name: "query.GreaterThan",
 			query: query.Query{
@@ -707,6 +709,7 @@ func Test_buildWheres(t *testing.T) {
 			builder := goqu.From("table")
 			buildWheres(&testSchema, &tt.query, builder)
 			sql, args, _ := builder.Prepared(true).ToSQL()
+			sql = strings.ReplaceAll(sql, "$$", "?")
 			if sql != tt.wantSQL {
 				t.Errorf("SQL = %+#v, want %+#v", sql, tt.wantSQL)
 			}
