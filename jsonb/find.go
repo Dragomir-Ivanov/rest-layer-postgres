@@ -121,6 +121,98 @@ func (s store) Find(ctx context.Context, q *query.Query) (*resource.ItemList, er
 	return result, nil
 }
 
+func (s store) Reduce(ctx context.Context, q *query.Query, reducer func(item *resource.Item) error) error {
+	builder := s.dialect.From(s.table)
+	buildSelects(q, builder)
+	err := buildWheres(s.schema, q, builder)
+	if err != nil {
+		return errors.Wrapf(err, "predicate: %v", q.Predicate)
+	}
+
+	buildSorts(s.schema, q, builder)
+	buildPagination(q, builder)
+
+	sqlStr, args, err := builder.Prepared(true).ToSQL()
+	if err != nil {
+		return errors.Wrapf(err, "predicate: %v", q.Predicate)
+	}
+	sqlStr = strings.ReplaceAll(sqlStr, "$$", "?")
+
+	slog.DebugContext(ctx, "pgsql.Find", "sql", sqlStr, "args", args)
+
+	rows, err := s.db.QueryContext(ctx, sqlStr, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	// result mapping
+	cols, err := rows.Columns()
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		rowVals := make([]any, len(cols))
+		rowValPtrs := make([]any, len(cols))
+
+		for i := range cols {
+			rowValPtrs[i] = &rowVals[i]
+		}
+
+		err := rows.Scan(rowValPtrs...)
+		if err != nil {
+			return err
+		}
+
+		var ID any
+		var etag string
+		var updated time.Time
+		payload := make(map[string]any)
+
+		for i, v := range rowVals {
+			b, ok := v.([]byte)
+			if ok {
+				v = string(b)
+			}
+
+			switch cols[i] {
+			case "id":
+				ID = v
+				switch t := v.(type) {
+				case int64:
+					ID = strconv.Itoa(int(t))
+				}
+			case "etag":
+				etag = v.(string)
+			case "updated":
+				updated = v.(time.Time)
+			case "payload":
+				if err := json.Unmarshal([]byte(v.(string)), &payload); err != nil {
+					return err
+				}
+			}
+		}
+
+		payload["id"] = ID
+
+		item := &resource.Item{
+			ID:      ID,
+			ETag:    etag,
+			Updated: updated,
+			Payload: payload,
+		}
+		internal.FixSchemaTypes(s.schema, item.Payload)
+
+		err = reducer(item)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s store) Count(ctx context.Context, q *query.Query) (int, error) {
 	builder := s.dialect.From(s.table).Select(goqu.COUNT(goqu.Star()))
 
